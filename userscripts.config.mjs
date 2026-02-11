@@ -16,7 +16,7 @@ export const scripts = [
       name: "IMDb -> Letterboxd Shortcut",
       namespace: "https://website-mod.local",
       description: "Adds a one-click Letterboxd search link on IMDb title pages.",
-      version: "0.1.0",
+      version: "0.1.1",
       match: ["https://www.imdb.com/title/*"],
       runAt: "document-idle",
       grant: ["none"]
