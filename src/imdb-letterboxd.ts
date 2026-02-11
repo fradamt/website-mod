@@ -2,7 +2,7 @@ const LINK_ID = "tm-letterboxd-link";
 const SLOT_ID = "tm-letterboxd-slot";
 
 function isTitlePath(): boolean {
-  return /^\/title\/tt\d+/.test(location.pathname);
+  return /^(\/[a-z]{2}(-[a-z]{2})?)?\/title\/tt\d+/.test(location.pathname);
 }
 
 function isVisibleElement(element: Element | null): element is HTMLElement {
@@ -24,7 +24,7 @@ function parseTitle(): string | null {
 
   return raw
     .replace(/\s*-\s*IMDb\s*$/i, "")
-    .replace(/\s*\(\d{4}\)\s*$/, "")
+    .replace(/\s*\(\d{4}\).*$/, "")
     .trim();
 }
 
