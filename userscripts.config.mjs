@@ -16,14 +16,14 @@ export const scripts = [
       name: "IMDb -> Letterboxd Shortcut",
       namespace: "https://website-mod.local",
       description: "Adds a one-click Letterboxd search link on IMDb title pages.",
-      version: "0.1.5",
+      version: "0.2.0",
       match: [
         "https://www.imdb.com/*",
         "https://imdb.com/*",
         "https://m.imdb.com/*"
       ],
       runAt: "document-idle",
-      grant: ["none"]
+      grant: ["GM_info"]
     }
   }
 ];

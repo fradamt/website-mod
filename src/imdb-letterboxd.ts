@@ -1,5 +1,9 @@
+declare const unsafeWindow: typeof window;
+
 const LINK_ID = "tm-letterboxd-link";
 const SLOT_ID = "tm-letterboxd-slot";
+
+const pageWindow = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
 
 function isTitlePath(): boolean {
   return /^(\/[a-z]{2}(-[a-z]{2})?)?\/title\/tt\d+/.test(location.pathname);
@@ -126,9 +130,6 @@ function injectLink(): void {
 
   const title = parseTitle();
   if (!title) {
-    console.debug("[letterboxd] title not found, og:title =",
-      document.querySelector('meta[property="og:title"]')?.getAttribute("content"),
-      "h1 =", document.querySelector("h1")?.textContent?.trim());
     return;
   }
 
@@ -138,8 +139,6 @@ function injectLink(): void {
   if (!mountInPreferredContainer(link)) {
     mountFallback(link);
   }
-
-  console.debug("[letterboxd] link injected for:", title, "parent:", link.parentElement?.id || link.parentElement?.tagName);
 }
 
 function installObservers(): void {
@@ -158,23 +157,21 @@ function installObservers(): void {
     setTimeout(() => injectLink(), 0);
   };
 
-  const originalPushState = history.pushState.bind(history);
-  history.pushState = function (...args) {
+  const originalPushState = pageWindow.history.pushState.bind(pageWindow.history);
+  pageWindow.history.pushState = function (...args: Parameters<History["pushState"]>) {
     originalPushState(...args);
     rerun();
   };
 
-  const originalReplaceState = history.replaceState.bind(history);
-  history.replaceState = function (...args) {
+  const originalReplaceState = pageWindow.history.replaceState.bind(pageWindow.history);
+  pageWindow.history.replaceState = function (...args: Parameters<History["replaceState"]>) {
     originalReplaceState(...args);
     rerun();
   };
 
-  window.addEventListener("popstate", rerun);
-  window.addEventListener("hashchange", rerun);
+  pageWindow.addEventListener("popstate", rerun);
+  pageWindow.addEventListener("hashchange", rerun);
 }
-
-console.debug("[letterboxd] script loaded, readyState:", document.readyState, "path:", location.pathname);
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", installObservers, { once: true });
