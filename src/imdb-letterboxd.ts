@@ -1,13 +1,21 @@
 const LINK_ID = "tm-letterboxd-link";
 const SLOT_ID = "tm-letterboxd-slot";
 
+function isTitlePath(): boolean {
+  return /^\/title\/tt\d+/.test(location.pathname);
+}
+
+function isVisibleElement(element: Element | null): element is HTMLElement {
+  return element instanceof HTMLElement && element.isConnected && element.getClientRects().length > 0;
+}
+
 function parseTitle(): string | null {
   const ogTitle = document.querySelector('meta[property="og:title"]')?.getAttribute("content")?.trim();
-  const headerTitle =
-    document.querySelector('h1[data-testid="hero__pageTitle"]')?.textContent?.trim() ??
-    document.querySelector('h1[data-testid="hero__primary-text"]')?.textContent?.trim() ??
-    document.querySelector("h1")?.textContent?.trim() ??
-    "";
+  const headerCandidate =
+    document.querySelector('h1[data-testid="hero__pageTitle"]') ??
+    document.querySelector('h1[data-testid="hero__primary-text"]') ??
+    document.querySelector("h1");
+  const headerTitle = isVisibleElement(headerCandidate) ? headerCandidate.textContent?.trim() ?? "" : "";
 
   const raw = ogTitle || headerTitle;
   if (!raw) {
@@ -56,7 +64,7 @@ function ensureTitleSlot(): HTMLElement | null {
     document.querySelector('h1[data-testid="hero__primary-text"]') ??
     document.querySelector("h1");
 
-  if (!(title instanceof HTMLElement)) {
+  if (!isVisibleElement(title)) {
     return null;
   }
 
@@ -73,7 +81,7 @@ function updateLink(link: HTMLAnchorElement, title: string): void {
 
 function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
   const subnav = document.querySelector('[data-testid="hero-subnav-bar-all-links"]');
-  if (subnav instanceof HTMLElement) {
+  if (isVisibleElement(subnav)) {
     link.style.marginLeft = "8px";
     link.style.position = "static";
     subnav.appendChild(link);
@@ -81,7 +89,7 @@ function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
   }
 
   const metadata = document.querySelector('[data-testid="hero-title-block__metadata"]');
-  if (metadata instanceof HTMLElement) {
+  if (isVisibleElement(metadata)) {
     link.style.marginLeft = "8px";
     link.style.position = "static";
     metadata.appendChild(link);
@@ -112,6 +120,10 @@ function mountFallback(link: HTMLAnchorElement): void {
 }
 
 function injectLink(): void {
+  if (!isTitlePath()) {
+    return;
+  }
+
   const title = parseTitle();
   if (!title) {
     return;
@@ -136,6 +148,25 @@ function installObservers(): void {
     childList: true,
     subtree: true
   });
+
+  const rerun = () => {
+    setTimeout(() => injectLink(), 0);
+  };
+
+  const originalPushState = history.pushState.bind(history);
+  history.pushState = function (...args) {
+    originalPushState(...args);
+    rerun();
+  };
+
+  const originalReplaceState = history.replaceState.bind(history);
+  history.replaceState = function (...args) {
+    originalReplaceState(...args);
+    rerun();
+  };
+
+  window.addEventListener("popstate", rerun);
+  window.addEventListener("hashchange", rerun);
 }
 
 if (document.readyState === "loading") {
