@@ -126,6 +126,9 @@ function injectLink(): void {
 
   const title = parseTitle();
   if (!title) {
+    console.debug("[letterboxd] title not found, og:title =",
+      document.querySelector('meta[property="og:title"]')?.getAttribute("content"),
+      "h1 =", document.querySelector("h1")?.textContent?.trim());
     return;
   }
 
@@ -135,6 +138,8 @@ function injectLink(): void {
   if (!mountInPreferredContainer(link)) {
     mountFallback(link);
   }
+
+  console.debug("[letterboxd] link injected for:", title, "parent:", link.parentElement?.id || link.parentElement?.tagName);
 }
 
 function installObservers(): void {
@@ -168,6 +173,8 @@ function installObservers(): void {
   window.addEventListener("popstate", rerun);
   window.addEventListener("hashchange", rerun);
 }
+
+console.debug("[letterboxd] script loaded, readyState:", document.readyState, "path:", location.pathname);
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", installObservers, { once: true });
