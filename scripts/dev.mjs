@@ -127,7 +127,7 @@ async function main() {
       bundle: true,
       format: "iife",
       platform: "browser",
-      target: "es2020",
+      target: "es2018",
       sourcemap: "inline",
       legalComments: "none",
       logLevel: "info"

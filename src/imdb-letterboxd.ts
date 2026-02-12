@@ -174,7 +174,21 @@ function installObservers(): void {
 }
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", installObservers, { once: true });
+  document.addEventListener(
+    "DOMContentLoaded",
+    () => {
+      try {
+        installObservers();
+      } catch (error) {
+        console.error("[IMDb -> Letterboxd Shortcut] Startup failed", error);
+      }
+    },
+    { once: true }
+  );
 } else {
-  installObservers();
+  try {
+    installObservers();
+  } catch (error) {
+    console.error("[IMDb -> Letterboxd Shortcut] Startup failed", error);
+  }
 }
