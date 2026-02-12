@@ -49,6 +49,7 @@ GitHub Actions (`.github/workflows/deploy-userscripts.yml`) builds on push to `m
 Scripts run in the browser as content scripts. Key patterns used in the existing `imdb-letterboxd.ts`:
 
 - DOM injection with idempotent element creation (check for existing element by ID before creating)
-- `MutationObserver` on `document.documentElement` to handle SPA navigation
 - `history.pushState`/`replaceState` monkey-patching + `popstate`/`hashchange` listeners for route changes
-- Graceful fallback mounting (preferred container → slot after title → fixed-position overlay)
+- Finite delayed reinjection bursts after navigation events instead of a global mutation loop
+- Cleanup of injected UI when leaving IMDb title routes
+- Graceful fallback mounting (preferred container -> slot after title -> fixed-position overlay)
