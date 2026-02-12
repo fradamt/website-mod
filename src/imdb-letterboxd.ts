@@ -2,8 +2,12 @@ declare const unsafeWindow: typeof window;
 
 const LINK_ID = "tm-letterboxd-link";
 const SLOT_ID = "tm-letterboxd-slot";
+const INSTALL_FLAG = "__tmImdbLetterboxdInstalled";
+const RETRY_DELAYS_MS = [0, 120, 350, 800, 1600];
 
 const pageWindow = typeof unsafeWindow !== "undefined" ? unsafeWindow : window;
+const runtimeWindow = pageWindow as Window & { [INSTALL_FLAG]?: boolean };
+let pendingRetryTimeouts: number[] = [];
 
 function isTitlePath(): boolean {
   return /^(\/[a-z]{2}(-[a-z]{2})?)?\/title\/tt\d+/.test(location.pathname);
@@ -80,7 +84,16 @@ function ensureTitleSlot(): HTMLElement | null {
 }
 
 function updateLink(link: HTMLAnchorElement, title: string): void {
-  link.href = `https://letterboxd.com/search/${encodeURIComponent(title)}/`;
+  const nextHref = `https://letterboxd.com/search/${encodeURIComponent(title)}/`;
+  if (link.href !== nextHref) {
+    link.href = nextHref;
+  }
+}
+
+function appendIfNeeded(parent: HTMLElement, link: HTMLAnchorElement): void {
+  if (link.parentElement !== parent) {
+    parent.appendChild(link);
+  }
 }
 
 function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
@@ -88,7 +101,7 @@ function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
   if (isVisibleElement(subnav)) {
     link.style.marginLeft = "8px";
     link.style.position = "static";
-    subnav.appendChild(link);
+    appendIfNeeded(subnav, link);
     return true;
   }
 
@@ -96,7 +109,7 @@ function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
   if (isVisibleElement(metadata)) {
     link.style.marginLeft = "8px";
     link.style.position = "static";
-    metadata.appendChild(link);
+    appendIfNeeded(metadata, link);
     return true;
   }
 
@@ -104,7 +117,7 @@ function mountInPreferredContainer(link: HTMLAnchorElement): boolean {
   if (slot) {
     link.style.marginLeft = "0";
     link.style.position = "static";
-    slot.appendChild(link);
+    appendIfNeeded(slot, link);
     return true;
   }
 
@@ -120,11 +133,16 @@ function mountFallback(link: HTMLAnchorElement): void {
   link.style.position = "fixed";
   link.style.right = "12px";
   link.style.bottom = "12px";
-  document.body.appendChild(link);
+  appendIfNeeded(document.body, link);
 }
 
 function injectLink(): void {
   if (!isTitlePath()) {
+    document.getElementById(LINK_ID)?.remove();
+    const slot = document.getElementById(SLOT_ID);
+    if (slot instanceof HTMLElement && slot.childElementCount === 0) {
+      slot.remove();
+    }
     return;
   }
 
@@ -141,20 +159,39 @@ function injectLink(): void {
   }
 }
 
+function clearPendingRetries(): void {
+  for (const timeoutId of pendingRetryTimeouts) {
+    pageWindow.clearTimeout(timeoutId);
+  }
+  pendingRetryTimeouts = [];
+}
+
+function scheduleInjectionBurst(): void {
+  clearPendingRetries();
+
+  for (const delay of RETRY_DELAYS_MS) {
+    const timeoutId = pageWindow.setTimeout(() => {
+      try {
+        injectLink();
+      } catch (error) {
+        console.error("[IMDb -> Letterboxd Shortcut] Inject failed", error);
+      }
+    }, delay);
+    pendingRetryTimeouts.push(timeoutId);
+  }
+}
+
 function installObservers(): void {
-  injectLink();
+  if (runtimeWindow[INSTALL_FLAG]) {
+    scheduleInjectionBurst();
+    return;
+  }
+  runtimeWindow[INSTALL_FLAG] = true;
 
-  const observer = new MutationObserver(() => {
-    injectLink();
-  });
-
-  observer.observe(document.documentElement, {
-    childList: true,
-    subtree: true
-  });
+  scheduleInjectionBurst();
 
   const rerun = () => {
-    setTimeout(() => injectLink(), 0);
+    scheduleInjectionBurst();
   };
 
   const originalPushState = pageWindow.history.pushState.bind(pageWindow.history);
